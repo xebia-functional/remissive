@@ -6,14 +6,44 @@ types are unified under a generic `Message` type whose parameter establishes the
 complete scope of the message lexicon. Remissive is transport-neutral, so the
 same message lexicon may be used over UART, UDP, TCP, WebSocket, etc., and
 different message lexicons may be defined within the same application. The
-Remissive API can be used manually, but using the `remissive_macros` crate is
-recommended to further streamline development and reduce boilerplate.
+Remissive API can be used manually, but using the
+[`remissive_macros`](../remissive-macros) crate is recommended to further
+streamline development and reduce boilerplate.
+
+The name "Remissive" is a portmanteau of "missive" and quite a few other
+possibilities, like "re-" (do again), "remit" (relief of pain), and "remiss"
+(really ought to exist already). It's also a play on "remissive", in the sense
+that it is both the sin of writing yet another message framework and also its
+absolution. I've built probably two dozen message frameworks in half as many
+languages already, and I would like to have a one-and-for-all framework in Rust.
 
 # Elementary Usage
 
 `Message` is the core type of Remissive. It is a generic `struct` wrapping a
-user-specified message type. Here's an example using variable-length text
-messages and heap-fixed-bound serialization to be embedded-friendly:
+_conversation identifier_ and a user-specified message type, called the _body_.
+
+The conversation identifier represents a conversation between two parties. Each
+conversation is identified by a 2-tuple of `<sender, id>`, where `sender` is the
+party that initiated the conversation and `id` is a monotonically increasing
+value that uniquely identifies the conversation for `sender`. A `Message`
+carries only the `id` of the conversation, so the `sender` must be inferred from
+the context of receipt. A party begins a conversation by allocating a new
+conversation identifier, stamping it onto a request, and transmitting that
+request to its partner. The partner receives the request, uses the same
+conversation identifier to stamp its response, and transmits the response back
+to the original party. This continues until the conversation is complete.
+Completeness is determined by the message protocol itself, not by Remissive, and
+likewise for other properties like in-order delivery, reliability, and
+parallelism. This simple scheme allows users to specify and construct
+arbitrarily complex message protocols.
+
+The body is the payload of the message, its _raison d'être_. It can be any type
+that implements the `Serialize` and `Deserialize` traits from
+[`serde`](https://crates.io/crates/serde). This is where a user focuses their
+efforts when implementing a message protocol.
+
+Here's an example using variable-length text messages and heap-fixed-bound
+serialization to be embedded-friendly:
 
 ```rust
 use remissive::{HeaplessVec, Message};

@@ -95,26 +95,6 @@ impl<Body: core::fmt::Display> core::fmt::Display for Message<Body>
 
 impl<Body: Serialize + DeserializeOwned> Message<Body>
 {
-	/// Construct a [Message] with the given complete state.
-	#[inline]
-	pub const fn with_id_and_body(id: u32, body: Body) -> Self
-	{
-		Self { id, body }
-	}
-
-	/// Construct a [Message] with the specified [body](Self::body). Allocate
-	/// the next available identifier from the specified
-	/// [atomic&#32;counter](AtomicU32), using [`SeqCst`](Ordering::SeqCst)
-	/// [ordering](Ordering), thereby ensuring thread safety.
-	pub fn with_body(generator: &AtomicU32, body: Body) -> Self
-	{
-		Self
-		{
-			id: generator.fetch_add(1, Ordering::SeqCst),
-			body
-		}
-	}
-
 	/// Answer a conservative heuristic for the number of bytes required to
 	/// serialize a [Message]. Given that the serialization format uses a
 	/// variable-length encoding for certain primitive types, the goal is to
@@ -166,6 +146,40 @@ impl<Body: Serialize + DeserializeOwned> Message<Body>
 	pub fn deserialize(bytes: impl AsRef<[u8]>) -> Result<Self, super::Error>
 	{
 		from_bytes(bytes.as_ref())
+	}
+}
+
+impl<Body> Message<Body>
+{
+	/// Construct a [`Message`] with the given complete state.
+	#[inline]
+	pub const fn with_id_and_body(id: u32, body: Body) -> Self
+	{
+		Self { id, body }
+	}
+
+	/// Construct a [`Message`] with the specified [body](Self::body). Allocate
+	/// the next available identifier from the specified
+	/// [atomic&#32;counter](AtomicU32), using [`SeqCst`](Ordering::SeqCst)
+	/// [ordering](Ordering), thereby ensuring thread safety.
+	pub fn with_body(generator: &AtomicU32, body: Body) -> Self
+	{
+		Self
+		{
+			id: generator.fetch_add(1, Ordering::SeqCst),
+			body
+		}
+	}
+
+	/// Construct a reply to the receiver by invoking the specified `builder`
+	/// function. Use the receiver's identifier as the conversation identifier.
+	pub fn reply(&self, builder: impl FnOnce() -> Body) -> Self
+	{
+		Self
+		{
+			id: self.id,
+			body: builder()
+		}
 	}
 }
 
@@ -569,5 +583,21 @@ mod test
 				assert_eq!(rejected.versions[3].unwrap().0, 2);
 			}
 		}
+	}
+
+	/// Test that replying continues the conversation.
+	#[test]
+	fn reply()
+	{
+		struct SumRequest { _a: u32, _b: u32 }
+		struct Sum { result: u32 }
+		enum Body { SumRequest(SumRequest), Sum(Sum) }
+		let request = Message::with_id_and_body(
+			0,
+			Body::SumRequest(SumRequest { _a: 1, _b: 2 })
+		);
+		let response = request.reply(|| Body::Sum(Sum { result: 3 }));
+		assert_eq!(response.id, request.id);
+		assert!(matches!(response.body, Body::Sum(Sum { result: 3 })));
 	}
 }

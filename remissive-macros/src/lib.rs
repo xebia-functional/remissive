@@ -249,7 +249,7 @@ pub fn remissive(
 	item: proc_macro::TokenStream
 ) -> proc_macro::TokenStream
 {
-	catch_error(|| {
+	catch_panic(|| {
 		let RemissiveAttribute {
 			enum_ident,
 			position,
@@ -308,8 +308,8 @@ pub fn remissive(
 /// Mark the annotated _empty_ `enum` as the unification target for a complete
 /// lexicon of message types. Automatically derives `serde::Serialize` and
 /// `serde::Deserialize` for the annotated type. Every type annotated with
-/// `#[remissive(X, _)]` will be unified into this `enum`. The variant names
-/// correspond to the names of the constituent types.
+/// `#[remissive(X, _)]` will be unified into this `enum`. The unqualified names
+/// of all such types must be visible to the macro expansion.
 ///
 /// Any arguments correspond to directives. The following directives are
 /// supported:
@@ -344,6 +344,15 @@ pub fn remissive(
 /// rewriting attributes should be applied to it, and all `#[derive]` attributes
 /// should be placed _after_ this attribute so that they see the complete set of
 /// variants.
+///
+/// Additionally, generates implementations of:
+///
+/// * [`From<target>`] for each constituent type, where `target` is the
+///   unification target.
+/// * [`TryFrom<target>`] for each constituent type, where `target` is the
+///   unification target. The error type is unit.
+/// * [`TryFrom<Message<target>>`] for each constituent type, where `target` is
+///   the unification target. The error type is unit.
 ///
 /// ### Examples
 ///
@@ -411,7 +420,7 @@ pub fn remissive_target(
 	item: proc_macro::TokenStream
 ) -> proc_macro::TokenStream
 {
-	catch_error(|| {
+	catch_panic(|| {
 		let RemissiveTargetAttribute {
 			no_version_negotiation,
 			no_acknowledgment
@@ -427,19 +436,92 @@ pub fn remissive_target(
 		assert!(matches!(item.data, Data::Enum(_)), "expected enum");
 		let enum_ident = item.ident;
 		let enum_name = enum_ident.to_string();
-		let mut registry = REGISTRY.lock().unwrap();
-		let mut messages = registry
-			.remove(&enum_name)
-			.expect(
-				"one or more data types annotated with `#[remissive]` to be \
-				encountered before `#[remissive_target]`"
-			)
-			.into_iter()
-			.map(|r| (r.position, (r.variant_name, r.source_name)))
-			.collect::<HashMap<usize, (String, String)>>();
-		messages.get(&0).expect("some message type must claim position `0`");
+		let builtins = {
+			let mut builtins = TokenStream::new();
+			if !no_version_negotiation
+			{
+				builtins.extend(quote! {
+					ProposeVersion(remissive::ProposeVersion),
+					AcceptedVersion(remissive::AcceptedVersion),
+					SupportedVersions(remissive::SupportedVersions),
+				});
+			}
+			if !no_acknowledgment
+			{
+				builtins.extend(quote! {
+					Acknowledged(remissive::Acknowledged),
+				});
+			}
+			builtins
+		};
+		let mut messages = {
+			let mut registry = REGISTRY.lock().unwrap();
+			let messages = registry
+				.remove(&enum_name)
+				.expect(
+					"one or more data types annotated with `#[remissive]` to \
+					be encountered before `#[remissive_target]`"
+				)
+				.into_iter()
+				.map(|r| (r.position, (r.variant_name, r.source_name)))
+				.collect::<HashMap<usize, (String, String)>>();
+			messages.get(&0)
+				.expect("some message type must claim position `0`");
+			messages
+		};
+		let converters = messages.clone().into_iter().fold(
+			TokenStream::new(),
+			|mut acc, (_, (variant_name, source_name))| {
+				let variant_name = Ident::new(&variant_name, Span::call_site());
+				let source_name = Ident::new(&source_name, Span::call_site());
+				acc.extend(quote! {
+					impl From<#source_name> for #enum_ident
+					{
+						fn from(source: #source_name) -> Self
+						{
+							#enum_ident::#variant_name(source)
+						}
+					}
+
+					impl TryFrom<#enum_ident> for #source_name
+					{
+						type Error = ();
+
+						fn try_from(
+							source: #enum_ident
+						) -> Result<Self, Self::Error>
+						{
+							match source
+							{
+								#enum_ident::#variant_name(source) =>
+									Ok(source),
+								_ => Err(())
+							}
+						}
+					}
+
+					impl TryFrom<remissive::Message<#enum_ident>>
+					for #source_name
+					{
+						type Error = ();
+
+						fn try_from(
+							source: remissive::Message<#enum_ident>
+						) -> Result<Self, Self::Error>
+						{
+							match source.body
+							{
+								#enum_ident::#variant_name(source) =>
+									Ok(source),
+								_ => Err(())
+							}
+						}
+					}
+				});
+				acc
+			});
 		let last_ordinal = messages.iter().map(|r| *r.0).max().unwrap();
-		let body = (0..=last_ordinal)
+		let body = (0 ..= last_ordinal)
 			.map(|ordinal|
 				messages.remove(&ordinal)
 					.map(|(variant_name, source_name)| {
@@ -459,21 +541,6 @@ pub fn remissive_target(
 				acc.extend(variant);
 				acc
 			});
-		let mut builtins = TokenStream::new();
-		if !no_version_negotiation
-		{
-			builtins.extend(quote! {
-				ProposeVersion(remissive::ProposeVersion),
-				AcceptedVersion(remissive::AcceptedVersion),
-				SupportedVersions(remissive::SupportedVersions),
-			});
-		}
-		if !no_acknowledgment
-		{
-			builtins.extend(quote! {
-				Acknowledged(remissive::Acknowledged),
-			});
-		}
 		let out = quote! {
 			#attrs
 			#[derive(serde::Serialize, serde::Deserialize)]
@@ -482,6 +549,8 @@ pub fn remissive_target(
 				#builtins
 				#body
 			}
+
+			#converters
 		};
 		out.into()
 	})
@@ -656,7 +725,7 @@ const REMISSIVE_TARGET_DIRECTIVES: &[&str] =
 
 /// For convenience, the macros just panic whenever they don't like something.
 /// This function catches the panic and turns it into a compile error.
-fn catch_error(
+fn catch_panic(
 	f: impl FnOnce() -> proc_macro::TokenStream
 ) -> proc_macro::TokenStream
 {
