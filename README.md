@@ -2,9 +2,9 @@ Remissive defines an opinionated extensible skeletal message protocol that can
 be used with both embedded and standard applications. It provides built-in
 support for version negotiation, stateless acknowledgment, and compact binary
 serialization (via [`postcard`](https://crates.io/crates/postcard)). Message
-types are unified under a generic [`Message`] type whose parameter establishes
-the complete scope of the message lexicon. Remissive is transport-neutral, so
-the same message lexicon may be used over UART, UDP, TCP, WebSocket, etc., and
+types are unified under a generic `Message` type whose parameter establishes the
+complete scope of the message lexicon. Remissive is transport-neutral, so the
+same message lexicon may be used over UART, UDP, TCP, WebSocket, etc., and
 different message lexicons may be defined within the same application. The
 Remissive API can be used manually, but using the `remissive_macros` crate is
 recommended to further streamline development and reduce boilerplate.
@@ -185,13 +185,12 @@ fn example() {
 
 The following Cargo features are available:
 
-* `debug`: The `Debug` trait is implemented for [`Message`] iff it is
-  implemented for its type parameter. This feature is enabled by default,
-  but may be disabled to save space for embedded applications.
-* `display`: The `Display` trait is implemented for [`Message`] iff it is
-  implemented for its type parameter. This feature is enabled by default,
-  but may be disabled to save space for embedded applications.
+* `debug`: The `Debug` trait is implemented for `Message` iff it is implemented
+  for its type parameter. This feature is enabled by default, but may be disabled
+  to save space for embedded applications.
+* `display`: The `Display` trait is implemented for `Message` iff it is
+  implemented for its type parameter. This feature is enabled by default, but may
+  be disabled to save space for embedded applications.
 * `no-std`: Disables features that require the standard library and cannot
-  be cheaply polyfilled. Specifically, this feature disables heap
-  allocation, so `Debug`, `Display`, and `Serialize` become reliant on
-  preallocated buffers.
+  be cheaply polyfilled. Specifically, this feature disables heap allocation, so
+  `Debug`, `Display`, and `Serialize` become reliant on preallocated buffers.
