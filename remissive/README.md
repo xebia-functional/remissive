@@ -52,8 +52,8 @@ struct ComputeResponse { result: u32 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 enum Body {
-    ComputeRequest(ComputeRequest),
-    ComputeResponse(ComputeResponse)
+	ComputeRequest(ComputeRequest),
+	ComputeResponse(ComputeResponse)
 }
 
 type Msg = Message<Body>;
@@ -100,8 +100,8 @@ enum Body {
 	ProposeVersion(ProposeVersion),
 	AcceptedVersion(AcceptedVersion),
 	SupportedVersions(SupportedVersions),
-    ComputeRequest(ComputeRequest),
-    ComputeResponse(ComputeResponse)
+	ComputeRequest(ComputeRequest),
+	ComputeResponse(ComputeResponse)
 }
 
 type Msg = Message<Body>;

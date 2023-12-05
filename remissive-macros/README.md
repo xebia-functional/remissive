@@ -27,23 +27,23 @@ struct B(u32);
 #[derive(Debug, PartialEq)]
 struct C
 {
-    a: u64,
-    b: f64
+	a: u64,
+	b: f64
 }
 
 #[remissive_target]
 #[derive(Debug, PartialEq)]
 enum Body
 {
-    // Field definitions are filled in by the `remissive_target` macro. The
-    // generated variants, in definition order, are:
-    // * `ProposeVersion`
-    // * `AcceptedVersion`
-    // * `SupportedVersions`
-    // * `Acknowledged`
-    // * `A`
-    // * `B`
-    // * `C`
+	// Field definitions are filled in by the `remissive_target` macro. The
+	// generated variants, in definition order, are:
+	// * `ProposeVersion`
+	// * `AcceptedVersion`
+	// * `SupportedVersions`
+	// * `Acknowledged`
+	// * `A`
+	// * `B`
+	// * `C`
 }
 
 fn example() {
@@ -85,14 +85,14 @@ struct ComputeResponse { result: u32 }
 #[remissive_target]
 #[derive(PartialEq, Debug)]
 enum Body {
-    // Field definitions are filled in by the `remissive_target` macro. The
-    // generated variants, in definition order, are:
-    // * `ProposeVersion`
-    // * `AcceptedVersion`
-    // * `SupportedVersions`
-    // * `Acknowledged`
-    // * `ComputeRequest`
-    // * `ComputeResponse`
+	// Field definitions are filled in by the `remissive_target` macro. The
+	// generated variants, in definition order, are:
+	// * `ProposeVersion`
+	// * `AcceptedVersion`
+	// * `SupportedVersions`
+	// * `Acknowledged`
+	// * `ComputeRequest`
+	// * `ComputeResponse`
 }
 
 type Msg = Message<Body>;

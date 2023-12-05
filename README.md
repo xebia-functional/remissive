@@ -52,8 +52,8 @@ struct ComputeResponse { result: u32 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 enum Body {
-    ComputeRequest(ComputeRequest),
-    ComputeResponse(ComputeResponse)
+	ComputeRequest(ComputeRequest),
+	ComputeResponse(ComputeResponse)
 }
 
 type Msg = Message<Body>;
@@ -96,14 +96,14 @@ struct ComputeResponse { result: u32 }
 #[remissive_target]
 #[derive(PartialEq, Debug)]
 enum Body {
-    // Field definitions are filled in by the `remissive_target` macro. The
-    // generated variants, in definition order, are:
-    // * `ProposeVersion`
-    // * `AcceptedVersion`
-    // * `SupportedVersions`
-    // * `Acknowledged`
-    // * `ComputeRequest`
-    // * `ComputeResponse`
+	// Field definitions are filled in by the `remissive_target` macro. The
+	// generated variants, in definition order, are:
+	// * `ProposeVersion`
+	// * `AcceptedVersion`
+	// * `SupportedVersions`
+	// * `Acknowledged`
+	// * `ComputeRequest`
+	// * `ComputeResponse`
 }
 
 type Msg = Message<Body>;
@@ -150,8 +150,8 @@ enum Body {
 	ProposeVersion(ProposeVersion),
 	AcceptedVersion(AcceptedVersion),
 	SupportedVersions(SupportedVersions),
-    ComputeRequest(ComputeRequest),
-    ComputeResponse(ComputeResponse)
+	ComputeRequest(ComputeRequest),
+	ComputeResponse(ComputeResponse)
 }
 
 type Msg = Message<Body>;
